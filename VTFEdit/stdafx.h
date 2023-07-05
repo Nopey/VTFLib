@@ -34,9 +34,9 @@
 #include <tchar.h>
 #include <richedit.h>
 
-#include "..\lib\VTFLib.h"
-#include "..\lib\HLLib.h"
-#include "IL\il.h"
+#include "VTFLib.h"
+#include "HLLib.h"
+#include "IL/il.h"
 
 #ifdef CreateDirectory
 #undef CreateDirectory

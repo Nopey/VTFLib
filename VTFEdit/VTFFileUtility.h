@@ -21,6 +21,7 @@
 
 #include "stdafx.h"
 #include "VTFOptions.h"
+#include "../VTFLib/VTFWrapper.h"
 #include "Utility.h"
 
 using namespace System;

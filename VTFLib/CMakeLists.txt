@@ -6,7 +6,7 @@ option(VTFLIB_SHARED "If enabled, builds VTFLib as a shared library" ON)
 option(VTFLIB_STATIC "If enabled, builds VTFLib as a static library" OFF)
 
 if(VTFLIB_STATIC)
-	set(USABLE_VTFLIB VTFLib_Static PARENT_SCOPE)
+	set(USABLE_VTFLIB VTFLib_static PARENT_SCOPE)
 elseif(VTFLIB_SHARED)
 	set(USABLE_VTFLIB VTFLib PARENT_SCOPE)
 else()

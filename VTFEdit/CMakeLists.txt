@@ -19,6 +19,8 @@ target_link_libraries(VTFEdit PRIVATE DevIL "${USABLE_VTFLIB}")
 
 # Enable CLR, we're written in Managed C++
 set_target_properties(VTFEdit PROPERTIES COMMON_LANGUAGE_RUNTIME "")
+set(VS_DOTNET_REFS mscorlib System  System.Data System.Drawing System.Windows.Forms System.XML)
+set_target_properties(VTFEdit PROPERTIES VS_DOTNET_REFERENCES "${VS_DOTNET_REFS}")
 
 
 target_sources(VTFEdit PRIVATE
