@@ -9,8 +9,7 @@
  * version.
  */
 
-#ifndef VTFWRAPPER_H
-#define VTFWRAPPER_H
+#pragma once
 
 #include "stdafx.h"
 
@@ -78,6 +77,4 @@ VTFLIB_API vlVoid vlMaterialAddNodeSingle(const vlChar *cName, vlFloat sValue);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

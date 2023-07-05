@@ -17,8 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef STDAFX_H
-#define STDAFX_H
+#pragma once
 
 #if _MSC_VER >= 1400
 #	define _CRT_SECURE_NO_WARNINGS
@@ -38,5 +37,3 @@
 
 #include "../lib/VTFLib.h"
 #include "IL/il.h"
-
-#endif

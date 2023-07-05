@@ -19,6 +19,8 @@
 
 #include "stdafx.h"
 #include "enumerations.h"
+#include "../VTFLib/VTFWrapper.h"
+#include "../VTFLib/VMTWrapper.h"
 
 #define MAX_ITEMS	1024
 
@@ -986,7 +988,7 @@ void ProcessFile(vlChar *lpInputFile)
 		DestFormat = (vlImageGetFlags() & (TEXTUREFLAGS_ONEBITALPHA | TEXTUREFLAGS_EIGHTBITALPHA)) ? IMAGE_FORMAT_RGBA8888 : IMAGE_FORMAT_RGB888;
 
 		// Alocate the required memory to convert the vtf to.
-		lpImageData = malloc(vlImageComputeImageSize(vlImageGetWidth(), vlImageGetHeight(), 1, 1, DestFormat));
+		lpImageData = (vlByte *) malloc(vlImageComputeImageSize(vlImageGetWidth(), vlImageGetHeight(), 1, 1, DestFormat));
 
 		if(lpImageData == 0)
 		{
