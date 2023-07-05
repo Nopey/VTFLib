@@ -19,4 +19,6 @@ endif()
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+add_subdirectory(thirdparty)
+
 add_subdirectory(VTFLib)
