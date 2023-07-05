@@ -38,7 +38,7 @@ namespace VTFLib
 	vlUShort uiBlueScreenClearG = 0x0000;
 	vlUShort uiBlueScreenClearB = 0x0000;
 
-	vlSingle sFP16HDRExposure = 2.0f;
+	vlSingle sFP16HDRExposure = 1.0f;
 
 	vlUInt uiVMTParseMode = PARSE_MODE_LOOSE;
 }

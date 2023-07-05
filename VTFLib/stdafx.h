@@ -67,6 +67,66 @@ typedef vlSingle		vlFloat;			//!< Floating point number (same as vlSingled).
 static inline constexpr vlBool vlFalse = 0;
 static inline constexpr vlBool vlTrue = 1;
 
+struct vlUInt128
+{
+	vlUInt64 low = 0;
+	vlUInt64 high = 0;
+	vlUInt128() = default;
+	template<typename vlUIntx>
+	vlUInt128( vlUIntx low ) : low( low ) {}
+	vlUInt128( vlUInt64 low, vlUInt64 high ) : low( low ), high( high )
+	{}
+	template <typename vlUIntx>
+	operator vlUIntx()
+	{
+		if ( high > 0 )
+		{
+			// set a breakpoint here
+			return (vlUIntx)-1;
+		}
+
+		// drop high bits
+		return (vlUIntx)low;
+	}
+	vlUInt128 operator<<( vlUInt128 shift ) const
+	{
+		if ( shift.low == 0 )
+			return *this;
+
+		// huge shift
+		if (shift.low >= 64)
+			return vlUInt128(0, low << (shift.low - 64));
+
+		// small shift
+		return vlUInt128( low << shift.low, high << shift.low | low >> ( 64 - shift.low ) );
+	}
+	vlUInt128 operator>>( vlUInt128 shift ) const
+	{
+		if ( shift.low == 0 )
+			return *this;
+
+		// huge shift
+		if ( shift.low >= 64 )
+			return vlUInt128( high >> ( shift.low - 64 ), 0 );
+		// small shift
+		return vlUInt128( low >> shift.low | high << ( 64 - shift.low ), high >> shift.low );
+	}
+	vlUInt128 operator*( vlUInt128 rhs ) const
+	{
+		// ignore rhs's high bits
+		vlUInt128 x( low * rhs.low, high * rhs.low + low / UINT32_MAX * rhs.low / UINT32_MAX );
+		return x;
+	}
+	vlUInt128 operator|( vlUInt128 const &rhs ) const
+	{
+		return vlUInt128( low | rhs.low, high | rhs.high );
+	}
+	vlUInt128 operator&( vlUInt128 const &rhs ) const
+	{
+		return vlUInt128( low & rhs.low, high & rhs.high );
+	}
+};
+
 #if _MSC_VER >= 1400
 #	define _CRT_SECURE_NO_WARNINGS
 #	define _CRT_NONSTDC_NO_DEPRECATE

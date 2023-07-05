@@ -3115,7 +3115,7 @@ namespace VTFEdit
 				this->btnAnimate->Enabled = true;
 			}
 
-			if(VTFFile->GetFormat() == IMAGE_FORMAT_RGBA16161616F)
+			if ( VTFLib::CVTFFile::GetImageFormatInfo( VTFFile->GetFormat() ).uiRedBitsPerPixel > 8 )
 			{
 				this->trkHDRExposure->Enabled = true;
 			}

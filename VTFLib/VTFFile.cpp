@@ -441,6 +441,8 @@ static CMP_FORMAT GetCMPFormat( VTFImageFormat imageFormat, bool bDXT5GA )
 	case IMAGE_FORMAT_ATI2N:			return CMP_FORMAT_ATI2N;
 
 	case IMAGE_FORMAT_BC7:				return CMP_FORMAT_BC7;
+	case IMAGE_FORMAT_BC6H:				return CMP_FORMAT_BC6H;
+	case IMAGE_FORMAT_BC6H_SF:			return CMP_FORMAT_BC6H_SF;
 
 	default:							return CMP_FORMAT_Unknown;
 	}
@@ -849,7 +851,7 @@ vlUInt CVTFFile::NextPowerOfTwo(vlUInt uiSize)
 	uiSize--;
 	for(vlUInt i = 1; i <= sizeof(vlUInt) * 4; i <<= 1)
 	{
-		uiSize = uiSize | (uiSize >> i);
+		uiSize |= (uiSize >> i);
 	}
 	uiSize++;
 
@@ -1140,7 +1142,10 @@ vlBool CVTFFile::Load(IO::Readers::IReader *Reader, vlBool bHeaderOnly)
 		// headersize + lowbuffersize + buffersize *should* equal the filesize
 		if(this->Header->HeaderSize > uiFileSize || uiThumbnailBufferOffset + this->uiThumbnailBufferSize > uiFileSize || uiImageDataOffset + uiRealImageSize > uiFileSize)
 		{
-			LastError.Set("File may be corrupt; file too small for its image data.");
+			LastError.SetFormatted( "File may be corrupt; file too small for its image data.\n"
+									"(thumbnail %u, image %u, fileThumb %u or less, fileImage %u or less)",
+									this->uiThumbnailBufferSize, uiRealImageSize, uiFileSize - uiThumbnailBufferOffset,
+									uiFileSize - uiImageDataOffset );
 			throw 0;
 		}
 
@@ -2442,8 +2447,7 @@ vlBool CVTFFile::GenerateMipmaps(vlUInt uiFace, vlUInt uiFrame, VTFMipmapFilter 
 	stbir_datatype iDataType = STBIR_TYPE_UINT8;
 	if (actualFormat == IMAGE_FORMAT_RGB323232F || actualFormat == IMAGE_FORMAT_RGBA32323232F)
 		iDataType = STBIR_TYPE_FLOAT;
-	else if (actualFormat == IMAGE_FORMAT_RGBA16161616 || actualFormat == IMAGE_FORMAT_RGBA16161616 || 
-			actualFormat == IMAGE_FORMAT_RGBA16161616F)
+	else if (actualFormat == IMAGE_FORMAT_RGBA16161616 || actualFormat == IMAGE_FORMAT_RGBA16161616F)
 		iDataType = STBIR_TYPE_UINT16;
 
 	int iNumChannels = 0;
@@ -3030,7 +3034,9 @@ static SVTFImageFormatInfo VTFImageFormatInfo[] =
 	{},
 	{},
 	{},
-	{ "BC7",					8,  0,  0,  0,  0,  0, vlTrue,  vlTrue  }			// IMAGE_FORMAT_BC7
+	{ "BC7",					8,  0,  0,  0,  0,  0, vlTrue,  vlTrue  },			// IMAGE_FORMAT_BC7
+	{ "BC6H_UF",				8,  0, 16, 16,  0,  0, vlTrue,  vlTrue  },			// IMAGE_FORMAT_BC6H
+	{ "BC6H_SF",				8,  0, 16, 16,  0,  0, vlTrue,  vlTrue  }			// IMAGE_FORMAT_BC6H_SF
 };
 
 SVTFImageFormatInfo const &CVTFFile::GetImageFormatInfo(VTFImageFormat ImageFormat)
@@ -3065,6 +3071,8 @@ vlUInt CVTFFile::ComputeImageSize(vlUInt uiWidth, vlUInt uiHeight, vlUInt uiDept
 	case IMAGE_FORMAT_DXT5:
 	case IMAGE_FORMAT_ATI2N:
 	case IMAGE_FORMAT_BC7:
+	case IMAGE_FORMAT_BC6H:
+	case IMAGE_FORMAT_BC6H_SF:
 		if(uiWidth < 4 && uiWidth > 0)
 			uiWidth = 4;
 
@@ -3284,8 +3292,9 @@ vlBool CVTFFile::DecompressBCn(vlByte *src, vlByte *dst, vlUInt uiWidth, vlUInt 
 	destTexture.dwSize     = sizeof( destTexture );
 	destTexture.dwWidth    = uiWidth;
 	destTexture.dwHeight   = uiHeight;
-	destTexture.dwPitch    = 4 * uiWidth;
-	destTexture.format     = CMP_FORMAT_RGBA_8888;
+	bool bHDR = SourceFormat == IMAGE_FORMAT_BC6H || SourceFormat == IMAGE_FORMAT_BC6H_SF;
+	destTexture.dwPitch    = (bHDR ? 8 : 4) * uiWidth;
+	destTexture.format     = bHDR ? CMP_FORMAT_RGBA_16F : CMP_FORMAT_RGBA_8888;
 	destTexture.dwDataSize = destTexture.dwPitch * uiHeight;
 	destTexture.pData      = (CMP_BYTE*) dst;
 
@@ -3348,19 +3357,19 @@ vlBool CVTFFile::CompressBCn(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, v
 	return vlTrue;
 }
 
-typedef vlVoid (*TransformProc)(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A);
+typedef vlVoid (*TransformProc)(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A);
 
-vlVoid ToLuminance(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
+vlVoid ToLuminance(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A)
 {
-	R = G = B = (vlUInt16)(sLuminanceWeightR * (vlSingle)R + sLuminanceWeightG * (vlSingle)G + sLuminanceWeightB * (vlSingle)B);
+	R = G = B = (vlUInt32)(sLuminanceWeightR * (vlSingle)R + sLuminanceWeightG * (vlSingle)G + sLuminanceWeightB * (vlSingle)B);
 }
 
-vlVoid FromLuminance(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
+vlVoid FromLuminance(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A)
 {
 	B = G = R;
 }
 
-vlVoid ToBlueScreen(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
+vlVoid ToBlueScreen(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A)
 {
 	if(A == 0x0000)
 	{
@@ -3371,7 +3380,7 @@ vlVoid ToBlueScreen(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
 	A = 0xffff;
 }
 
-vlVoid FromBlueScreen(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
+vlVoid FromBlueScreen(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A)
 {
 	if(R == uiBlueScreenMaskR && G == uiBlueScreenMaskG && B == uiBlueScreenMaskB)
 	{
@@ -3441,27 +3450,78 @@ vlSingle Reinhard(vlSingle sValue)
     return sValue / (1.0f + sValue);
 }
 
-vlVoid ToFP16(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
+vlVoid ToFP16(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A)
 {
 }
 
-vlUInt16 FP16ToUnorm(vlUInt16 uiValue)
+vlUInt32 FP16ToUnorm(vlUInt16 uiValue)
 {
 	vlSingle sValue = FP16ToFP32(uiValue);
 
 	sValue *= sFP16HDRExposure;
 	sValue = Reinhard(sValue);
-	sValue *= 65535.0f;
-	sValue = std::min(std::max(sValue, 0.0f), 65535.0f);
-	return (vlUInt16) sValue;
+	sValue *= (vlSingle)UINT32_MAX;
+	sValue = std::min( std::max( sValue, 0.0f ), (vlSingle)UINT32_MAX );
+	return (vlUInt32) sValue;
 }
 
-vlVoid FromFP16(vlUInt16& R, vlUInt16& G, vlUInt16& B, vlUInt16& A)
+vlVoid FromFP16(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A)
 {
-	R = FP16ToUnorm(R);
-	G = FP16ToUnorm(G);
-	B = FP16ToUnorm(B);
-	A = FP16ToUnorm(A);
+	// the high bits of the uint32 have our fp16.. Thanks, Expand!
+	R = FP16ToUnorm( R >> 16 );
+	G = FP16ToUnorm( G >> 16 );
+	B = FP16ToUnorm( B >> 16 );
+	A = FP16ToUnorm( A >> 16 );
+}
+
+vlUInt32 FP32ToUnorm( vlUInt32 uiValue )
+{
+	vlSingle sValue = reinterpret_cast<vlSingle const &>( uiValue );
+
+	sValue *= sFP16HDRExposure;
+	sValue = Reinhard( sValue );
+	sValue *= (vlSingle)UINT32_MAX;
+	sValue = std::min( std::max( sValue, 0.0f ), (vlSingle)UINT32_MAX );
+	return (vlUInt32)sValue;
+}
+
+vlVoid FromFP32( vlUInt32 &R, vlUInt32 &G, vlUInt32 &B, vlUInt32 &A )
+{
+	R = FP32ToUnorm( R );
+	G = FP32ToUnorm( G );
+	B = FP32ToUnorm( B );
+	A = FP32ToUnorm( A );
+}
+
+vlVoid FromFP32RGB( vlUInt32 &R, vlUInt32 &G, vlUInt32 &B, vlUInt32 &A )
+{
+	R = FP32ToUnorm( R );
+	G = FP32ToUnorm( G );
+	B = FP32ToUnorm( B );
+}
+
+vlVoid FromFP32R( vlUInt32 &R, vlUInt32 &G, vlUInt32 &B, vlUInt32 &A )
+{
+	R = FP32ToUnorm( R );
+}
+
+vlUInt32 ScaleUnormByExposure( vlUInt32 uiValue )
+{
+	vlSingle sValue = ( (vlSingle)uiValue ) / (vlSingle)UINT32_MAX;
+
+	sValue *= sFP16HDRExposure;
+	sValue = Reinhard( sValue );
+	sValue *= (vlSingle)UINT32_MAX;
+	sValue = std::min( std::max( sValue, 0.0f ), (vlSingle)UINT32_MAX );
+	return (vlUInt32)sValue;
+}
+
+vlVoid ScaleUnormRGBAByExposure( vlUInt32 &R, vlUInt32 &G, vlUInt32 &B, vlUInt32 &A )
+{
+	R = ScaleUnormByExposure( R );
+	G = ScaleUnormByExposure( G );
+	B = ScaleUnormByExposure( B );
+	A = ScaleUnormByExposure( A );
 }
 
 typedef struct tagSVTFImageConvertInfo
@@ -3510,17 +3570,17 @@ static SVTFImageConvertInfo VTFImageConvertInfo[IMAGE_FORMAT_COUNT] =
 	{ 	 16,  2,  8,  8,  0,  0,	 0,	 1,	-1,	-1, vlFalse,  vlTrue,	NULL,	NULL,		IMAGE_FORMAT_UV88},
 	{ 	 32,  4,  8,  8,  8,  8,	 0,	 1,	 2,	 3, vlFalse,  vlTrue,	NULL,	NULL,		IMAGE_FORMAT_UVWQ8888},
 	{    64,  8, 16, 16, 16, 16,	 0,	 1,	 2,	 3, vlFalse,  vlTrue,	ToFP16,	FromFP16,	IMAGE_FORMAT_RGBA16161616F},
-	{	 64,  8, 16, 16, 16, 16,	 0,	 1,	 2,	 3, vlFalse,  vlTrue,	NULL,	NULL,		IMAGE_FORMAT_RGBA16161616},
+	{	 64,  8, 16, 16, 16, 16,	 0,	 1,	 2,	 3, vlFalse,  vlTrue,	ScaleUnormRGBAByExposure,	ScaleUnormRGBAByExposure,		IMAGE_FORMAT_RGBA16161616},
 	{ 	 32,  4,  8,  8,  8,  8,	 0,	 1,	 2,	 3, vlFalse,  vlTrue,	NULL,	NULL,		IMAGE_FORMAT_UVLX8888},
-	{ 	 32,  4, 32,  0,  0,  0,	 0,	-1,	-1,	-1, vlFalse, vlFalse,	NULL,	NULL,		IMAGE_FORMAT_R32F},
-	{ 	 96, 12, 32, 32, 32,  0,	 0,	 1,	 2,	-1, vlFalse, vlFalse,	NULL,	NULL,		IMAGE_FORMAT_RGB323232F},
-	{	128, 16, 32, 32, 32, 32,	 0,	 1,	 2,	 3, vlFalse, vlFalse,	NULL,	NULL,		IMAGE_FORMAT_RGBA32323232F},
+	{ 	 32,  4, 32,  0,  0,  0,	 0,	-1,	-1,	-1, vlFalse,  vlTrue,	NULL,	FromFP32R,	IMAGE_FORMAT_R32F},
+	{ 	 96, 12, 32, 32, 32,  0,	 0,	 1,	 2,	-1, vlFalse,  vlTrue,	NULL,	FromFP32RGB,	IMAGE_FORMAT_RGB323232F},
+	{	128, 16, 32, 32, 32, 32,	 0,	 1,	 2,	 3, vlFalse,  vlTrue,	NULL,	FromFP32,	IMAGE_FORMAT_RGBA32323232F},
 	{},
 	{},
 	{},
 	{	 32,  4,  0,  0,  0,  0,	-1,	-1,	-1,	-1, vlFalse, vlFalse,	NULL,	NULL,		IMAGE_FORMAT_NV_NULL},
-	{     8,  0,  0,  0,  0,  0,	-1, -1, -1, -1,  vlTrue, vlTrue,	NULL,	NULL,		IMAGE_FORMAT_ATI2N},
-	{	  4,  0,  0,  0,  0,  0,	-1, -1, -1, -1,  vlTrue, vlTrue,	NULL,	NULL,		IMAGE_FORMAT_ATI1N},
+	{     8,  0,  0,  0,  0,  0,	-1, -1, -1, -1,  vlTrue,  vlTrue,	NULL,	NULL,		IMAGE_FORMAT_ATI2N},
+	{	  4,  0,  0,  0,  0,  0,	-1, -1, -1, -1,  vlTrue,  vlTrue,	NULL,	NULL,		IMAGE_FORMAT_ATI1N},
 	{},
 	{},
 	{},
@@ -3555,7 +3615,9 @@ static SVTFImageConvertInfo VTFImageConvertInfo[IMAGE_FORMAT_COUNT] =
 	{},
 	{},
 	{},
-	{	  8,  0,  0,  0,  0,  0,	-1, -1, -1, -1,	 vlTrue, vlTrue,	NULL, NULL,			IMAGE_FORMAT_BC7},
+	{	  8,  0,  0,  0,  0,  0,	-1, -1, -1, -1,	 vlTrue,  vlTrue,	NULL, NULL,			IMAGE_FORMAT_BC7},
+	{	  8,  0,  0,  0,  0,  0,	-1, -1, -1, -1,	 vlTrue,  vlTrue,	NULL, FromFP16,		IMAGE_FORMAT_BC6H},
+	{	  8,  0,  0,  0,  0,  0,	-1, -1, -1, -1,	 vlTrue,  vlTrue,	NULL, FromFP16,		IMAGE_FORMAT_BC6H_SF},
 };
 
 // Get each channels shift and mask (for encoding and decoding).
@@ -3661,13 +3723,13 @@ T Expand(T S, T SourceBits, T DestBits)
 template<typename T, typename U>
 vlVoid Transform(TransformProc pTransform1, TransformProc pTransform2, T SR, T SG, T SB, T SA, T SRBits, T SGBits, T SBBits, T SABits, U& DR, U& DG, U& DB, U& DA, U DRBits, U DGBits, U DBBits, U DABits)
 {
-	vlUInt16 TR, TG, TB, TA;
+	vlUInt32 TR, TG, TB, TA;
 
-	// Expand from source to 16 bits for transform functions.
-	SRBits && SRBits < 16 ? TR = (vlUInt16)Expand<T>(SR, SRBits, 16) : TR = (vlUInt16)SR;
-	SGBits && SGBits < 16 ? TG = (vlUInt16)Expand<T>(SG, SGBits, 16) : TG = (vlUInt16)SG;
-	SBBits && SBBits < 16 ? TB = (vlUInt16)Expand<T>(SB, SBBits, 16) : TB = (vlUInt16)SB;
-	SABits && SABits < 16 ? TA = (vlUInt16)Expand<T>(SA, SABits, 16) : TA = (vlUInt16)SA;
+	// Expand from source to 32 bits for transform functions.
+	SRBits && SRBits < 32 ? TR = (vlUInt32)Expand<T>(SR, SRBits, 32) : TR = (vlUInt32)SR;
+	SGBits && SGBits < 32 ? TG = (vlUInt32)Expand<T>(SG, SGBits, 32) : TG = (vlUInt32)SG;
+	SBBits && SBBits < 32 ? TB = (vlUInt32)Expand<T>(SB, SBBits, 32) : TB = (vlUInt32)SB;
+	SABits && SABits < 32 ? TA = (vlUInt32)Expand<T>(SA, SABits, 32) : TA = (vlUInt32)SA;
 
 	// Source transform then dest transform.
 	if(pTransform1)
@@ -3675,25 +3737,25 @@ vlVoid Transform(TransformProc pTransform1, TransformProc pTransform2, T SR, T S
 	if(pTransform2)
 		pTransform2(TR, TG, TB, TA);
 
-	// Shrink to dest from 16 bits.
-	DRBits && DRBits < 16 ? DR = (U)Shrink<vlUInt16>(TR, 16, (vlUInt16)DRBits) : DR = (U)TR;
-	DGBits && DGBits < 16 ? DG = (U)Shrink<vlUInt16>(TG, 16, (vlUInt16)DGBits) : DG = (U)TG;
-	DBBits && DBBits < 16 ? DB = (U)Shrink<vlUInt16>(TB, 16, (vlUInt16)DBBits) : DB = (U)TB;
-	DABits && DABits < 16 ? DA = (U)Shrink<vlUInt16>(TA, 16, (vlUInt16)DABits) : DA = (U)TA;
+	// Shrink to dest from 32 bits.
+	DRBits && DRBits < 32 ? DR = (U)Shrink<vlUInt32>(TR, 32, (vlUInt32)DRBits) : DR = (U)TR;
+	DGBits && DGBits < 32 ? DG = (U)Shrink<vlUInt32>(TG, 32, (vlUInt32)DGBits) : DG = (U)TG;
+	DBBits && DBBits < 32 ? DB = (U)Shrink<vlUInt32>(TB, 32, (vlUInt32)DBBits) : DB = (U)TB;
+	DABits && DABits < 32 ? DA = (U)Shrink<vlUInt32>(TA, 32, (vlUInt32)DABits) : DA = (U)TA;
 }
 
 // Convert source to dest using required storage requirments (hence the template).
 template<typename T, typename U>
 vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt uiHeight, const SVTFImageConvertInfo& SourceInfo, const SVTFImageConvertInfo& DestInfo)
 {
-	vlUInt16 uiSourceRShift = 0, uiSourceGShift = 0, uiSourceBShift = 0, uiSourceAShift = 0;
-	vlUInt16 uiSourceRMask = 0, uiSourceGMask = 0, uiSourceBMask = 0, uiSourceAMask = 0;
+	vlUInt32 uiSourceRShift = 0, uiSourceGShift = 0, uiSourceBShift = 0, uiSourceAShift = 0;
+	vlUInt32 uiSourceRMask = 0, uiSourceGMask = 0, uiSourceBMask = 0, uiSourceAMask = 0;
 
-	vlUInt16 uiDestRShift = 0, uiDestGShift = 0, uiDestBShift = 0, uiDestAShift = 0;
-	vlUInt16 uiDestRMask = 0, uiDestGMask = 0, uiDestBMask = 0, uiDestAMask = 0;
+	vlUInt32 uiDestRShift = 0, uiDestGShift = 0, uiDestBShift = 0, uiDestAShift = 0;
+	vlUInt32 uiDestRMask = 0, uiDestGMask = 0, uiDestBMask = 0, uiDestAMask = 0;
 
-	GetShiftAndMask<vlUInt16>(SourceInfo, uiSourceRShift, uiSourceGShift, uiSourceBShift, uiSourceAShift, uiSourceRMask, uiSourceGMask, uiSourceBMask, uiSourceAMask);
-	GetShiftAndMask<vlUInt16>(DestInfo, uiDestRShift, uiDestGShift, uiDestBShift, uiDestAShift, uiDestRMask, uiDestGMask, uiDestBMask, uiDestAMask);
+	GetShiftAndMask<vlUInt32>(SourceInfo, uiSourceRShift, uiSourceGShift, uiSourceBShift, uiSourceAShift, uiSourceRMask, uiSourceGMask, uiSourceBMask, uiSourceAMask);
+	GetShiftAndMask<vlUInt32>(DestInfo, uiDestRShift, uiDestGShift, uiDestBShift, uiDestAShift, uiDestRMask, uiDestGMask, uiDestBMask, uiDestAMask);
 
 	vlByte *lpSourceEnd = lpSource + (uiWidth * uiHeight * SourceInfo.uiBytesPerPixel);
 	for(; lpSource < lpSourceEnd; lpSource += SourceInfo.uiBytesPerPixel, lpDest += DestInfo.uiBytesPerPixel)
@@ -3703,29 +3765,29 @@ vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt
 		T Source = 0;
 		for(i = 0; i < SourceInfo.uiBytesPerPixel; i++)
 		{
-			Source |= (T)lpSource[i] << ((T)i * 8);
+			Source = Source | ( T ) lpSource[i] << ( (T)i * 8 );
 		}
 
-		vlUInt16 SR = 0, SG = 0, SB = 0, SA = ~0;
-		vlUInt16 DR = 0, DG = 0, DB = 0, DA = ~0;	// default values
+		vlUInt32 SR = 0, SG = 0, SB = 0, SA = ~0;
+		vlUInt32 DR = 0, DG = 0, DB = 0, DA = ~0;	// default values
 
 		// read source values
 		if(uiSourceRMask)
-			SR = (vlUInt16)(Source >> (T)uiSourceRShift) & uiSourceRMask;	// isolate R channel
+			SR = (vlUInt32)((Source >> (T)uiSourceRShift) & (T)uiSourceRMask);	// isolate R channel
 
 		if(uiSourceGMask)
-			SG = (vlUInt16)(Source >> (T)uiSourceGShift) & uiSourceGMask;	// isolate G channel
+			SG = (vlUInt32)((Source >> (T)uiSourceGShift) & (T)uiSourceGMask);	// isolate G channel
 
 		if(uiSourceBMask)
-			SB = (vlUInt16)(Source >> (T)uiSourceBShift) & uiSourceBMask;	// isolate B channel
+			SB = (vlUInt32)((Source >> (T)uiSourceBShift) & (T)uiSourceBMask);	// isolate B channel
 
 		if(uiSourceAMask)
-			SA = (vlUInt16)(Source >> (T)uiSourceAShift) & uiSourceAMask;	// isolate A channel
+			SA = (vlUInt32)((Source >> (T)uiSourceAShift) & (T)uiSourceAMask);	// isolate A channel
 
 		if(SourceInfo.pFromTransform || DestInfo.pToTransform)
 		{
 			// transform values
-			Transform<vlUInt16, vlUInt16>(SourceInfo.pFromTransform, DestInfo.pToTransform, SR, SG, SB, SA, SourceInfo.uiRBitsPerPixel, SourceInfo.uiGBitsPerPixel, SourceInfo.uiBBitsPerPixel, SourceInfo.uiABitsPerPixel, DR, DG, DB, DA, DestInfo.uiRBitsPerPixel, DestInfo.uiGBitsPerPixel, DestInfo.uiBBitsPerPixel, DestInfo.uiABitsPerPixel);
+			Transform<vlUInt32, vlUInt32>(SourceInfo.pFromTransform, DestInfo.pToTransform, SR, SG, SB, SA, SourceInfo.uiRBitsPerPixel, SourceInfo.uiGBitsPerPixel, SourceInfo.uiBBitsPerPixel, SourceInfo.uiABitsPerPixel, DR, DG, DB, DA, DestInfo.uiRBitsPerPixel, DestInfo.uiGBitsPerPixel, DestInfo.uiBBitsPerPixel, DestInfo.uiABitsPerPixel);
 		}
 		else
 		{
@@ -3733,9 +3795,9 @@ vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt
 			if(uiSourceRMask && uiDestRMask)
 			{
 				if(DestInfo.uiRBitsPerPixel < SourceInfo.uiRBitsPerPixel)	// downsample
-					DR = Shrink<vlUInt16>(SR, SourceInfo.uiRBitsPerPixel, DestInfo.uiRBitsPerPixel);
+					DR = Shrink<vlUInt32>(SR, SourceInfo.uiRBitsPerPixel, DestInfo.uiRBitsPerPixel);
 				else if(DestInfo.uiRBitsPerPixel > SourceInfo.uiRBitsPerPixel)	// upsample
-					DR = Expand<vlUInt16>(SR, SourceInfo.uiRBitsPerPixel, DestInfo.uiRBitsPerPixel);
+					DR = Expand<vlUInt32>(SR, SourceInfo.uiRBitsPerPixel, DestInfo.uiRBitsPerPixel);
 				else
 					DR = SR;
 			}
@@ -3743,9 +3805,9 @@ vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt
 			if(uiSourceGMask && uiDestGMask)
 			{
 				if(DestInfo.uiGBitsPerPixel < SourceInfo.uiGBitsPerPixel)	// downsample
-					DG = Shrink<vlUInt16>(SG, SourceInfo.uiGBitsPerPixel, DestInfo.uiGBitsPerPixel);
+					DG = Shrink<vlUInt32>(SG, SourceInfo.uiGBitsPerPixel, DestInfo.uiGBitsPerPixel);
 				else if(DestInfo.uiGBitsPerPixel > SourceInfo.uiGBitsPerPixel)	// upsample
-					DG = Expand<vlUInt16>(SG, SourceInfo.uiGBitsPerPixel, DestInfo.uiGBitsPerPixel);
+					DG = Expand<vlUInt32>(SG, SourceInfo.uiGBitsPerPixel, DestInfo.uiGBitsPerPixel);
 				else
 					DG = SG;
 			}
@@ -3753,9 +3815,9 @@ vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt
 			if(uiSourceBMask && uiDestBMask)
 			{
 				if(DestInfo.uiBBitsPerPixel < SourceInfo.uiBBitsPerPixel)	// downsample
-					DB = Shrink<vlUInt16>(SB, SourceInfo.uiBBitsPerPixel, DestInfo.uiBBitsPerPixel);
+					DB = Shrink<vlUInt32>(SB, SourceInfo.uiBBitsPerPixel, DestInfo.uiBBitsPerPixel);
 				else if(DestInfo.uiBBitsPerPixel > SourceInfo.uiBBitsPerPixel)	// upsample
-					DB = Expand<vlUInt16>(SB, SourceInfo.uiBBitsPerPixel, DestInfo.uiBBitsPerPixel);
+					DB = Expand<vlUInt32>(SB, SourceInfo.uiBBitsPerPixel, DestInfo.uiBBitsPerPixel);
 				else
 					DB = SB;
 			}
@@ -3763,9 +3825,9 @@ vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt
 			if(uiSourceAMask && uiDestAMask)
 			{
 				if(DestInfo.uiABitsPerPixel < SourceInfo.uiABitsPerPixel)	// downsample
-					DA = Shrink<vlUInt16>(SA, SourceInfo.uiABitsPerPixel, DestInfo.uiABitsPerPixel);
+					DA = Shrink<vlUInt32>(SA, SourceInfo.uiABitsPerPixel, DestInfo.uiABitsPerPixel);
 				else if(DestInfo.uiABitsPerPixel > SourceInfo.uiABitsPerPixel)	// upsample
-					DA = Expand<vlUInt16>(SA, SourceInfo.uiABitsPerPixel, DestInfo.uiABitsPerPixel);
+					DA = Expand<vlUInt32>(SA, SourceInfo.uiABitsPerPixel, DestInfo.uiABitsPerPixel);
 				else
 					DA = SA;
 			}
@@ -3775,7 +3837,7 @@ vlBool ConvertTemplated(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt
 		U Dest = ((U)(DR & uiDestRMask) << (U)uiDestRShift) | ((U)(DG & uiDestGMask) << (U)uiDestGShift) | ((U)(DB & uiDestBMask) << (U)uiDestBShift) | ((U)(DA & uiDestAMask) << (U)uiDestAShift);
 		for(i = 0; i < DestInfo.uiBytesPerPixel; i++)
 		{
-			lpDest[i] = (vlByte)((Dest >> ((T)i * 8)) & 0xff);
+			lpDest[i] = (vlByte)((Dest >> ((U)i * 8)) & 0xff);
 		}
 	}
 
@@ -3837,11 +3899,16 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 	{
 		vlByte *lpSourceRGBA = lpSource;
 		vlBool bResult = vlTrue;
+		VTFImageFormat InterFormat = IMAGE_FORMAT_RGBA8888;
+		if ( SourceFormat == IMAGE_FORMAT_BC6H_SF || SourceFormat == IMAGE_FORMAT_BC6H
+			|| DestFormat == IMAGE_FORMAT_BC6H_SF ||   DestFormat == IMAGE_FORMAT_BC6H )
+			// HDR intermediate, use 16FP intermediate buffer
+			InterFormat = IMAGE_FORMAT_RGBA16161616F;
 
 		// allocate temp data for intermittent conversions
-		if(SourceFormat != IMAGE_FORMAT_RGBA8888)
+		if(SourceFormat != InterFormat)
 		{
-			lpSourceRGBA = new vlByte[CVTFFile::ComputeImageSize(uiWidth, uiHeight, 1, IMAGE_FORMAT_RGBA8888)];
+			lpSourceRGBA = new vlByte[CVTFFile::ComputeImageSize(uiWidth, uiHeight, 1, InterFormat)];
 		}
 
 		// decompress the source or convert it to RGBA for compressing
@@ -3856,10 +3923,12 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 		case IMAGE_FORMAT_ATI2N:
 		case IMAGE_FORMAT_ATI1N:
 		case IMAGE_FORMAT_BC7:
+		case IMAGE_FORMAT_BC6H:
+		case IMAGE_FORMAT_BC6H_SF:
 			bResult = CVTFFile::DecompressBCn(lpSource, lpSourceRGBA, uiWidth, uiHeight, SourceFormat);
 			break;
 		default:
-			bResult = CVTFFile::Convert(lpSource, lpSourceRGBA, uiWidth, uiHeight, SourceFormat, IMAGE_FORMAT_RGBA8888);
+			bResult = CVTFFile::Convert(lpSource, lpSourceRGBA, uiWidth, uiHeight, SourceFormat, InterFormat);
 			break;
 		}
 
@@ -3875,10 +3944,13 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 			case IMAGE_FORMAT_ATI2N:
 			case IMAGE_FORMAT_ATI1N:
 			case IMAGE_FORMAT_BC7:
+				// TODO: Magnus: BC6H and BC6H_SF creation; requires HDR input and testing
+			case IMAGE_FORMAT_BC6H:
+			case IMAGE_FORMAT_BC6H_SF:
 				bResult = CVTFFile::CompressBCn(lpSourceRGBA, lpDest, uiWidth, uiHeight, DestFormat);
 				break;
 			default:
-				bResult = CVTFFile::Convert(lpSourceRGBA, lpDest, uiWidth, uiHeight, IMAGE_FORMAT_RGBA8888, DestFormat);
+				bResult = CVTFFile::Convert( lpSourceRGBA, lpDest, uiWidth, uiHeight, InterFormat, DestFormat );
 				break;
 			}
 		}
@@ -3904,6 +3976,8 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 				return ConvertTemplated<vlUInt8, vlUInt32>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
 			else if(DestInfo.uiBytesPerPixel <= 8)
 				return ConvertTemplated<vlUInt8, vlUInt64>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
+			else if ( DestInfo.uiBytesPerPixel <= 16 )
+				return ConvertTemplated<vlUInt8, vlUInt128>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
 		}
 		else if(SourceInfo.uiBytesPerPixel <= 2)
 		{
@@ -3915,6 +3989,8 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 				return ConvertTemplated<vlUInt16, vlUInt32>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
 			else if(DestInfo.uiBytesPerPixel <= 8)
 				return ConvertTemplated<vlUInt16, vlUInt64>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
+			else if ( DestInfo.uiBytesPerPixel <= 16 )
+				return ConvertTemplated<vlUInt16, vlUInt128>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
 		}
 		else if(SourceInfo.uiBytesPerPixel <= 4)
 		{
@@ -3926,6 +4002,8 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 				return ConvertTemplated<vlUInt32, vlUInt32>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
 			else if(DestInfo.uiBytesPerPixel <= 8)
 				return ConvertTemplated<vlUInt32, vlUInt64>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
+			else if ( DestInfo.uiBytesPerPixel <= 16 )
+				return ConvertTemplated<vlUInt32, vlUInt128>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
 		}
 		else if(SourceInfo.uiBytesPerPixel <= 8)
 		{
@@ -3937,6 +4015,21 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 				return ConvertTemplated<vlUInt64, vlUInt32>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
 			else if(DestInfo.uiBytesPerPixel <= 8)
 				return ConvertTemplated<vlUInt64, vlUInt64>(lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo);
+			else if ( DestInfo.uiBytesPerPixel <= 16 )
+				return ConvertTemplated<vlUInt64, vlUInt128>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
+		}
+		else if ( SourceInfo.uiBytesPerPixel <= 16 )
+		{
+			if ( DestInfo.uiBytesPerPixel <= 1 )
+				return ConvertTemplated<vlUInt128, vlUInt8>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
+			else if ( DestInfo.uiBytesPerPixel <= 2 )
+				return ConvertTemplated<vlUInt128, vlUInt16>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
+			else if ( DestInfo.uiBytesPerPixel <= 4 )
+				return ConvertTemplated<vlUInt128, vlUInt32>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
+			else if ( DestInfo.uiBytesPerPixel <= 8 )
+				return ConvertTemplated<vlUInt128, vlUInt64>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
+			else if ( DestInfo.uiBytesPerPixel <= 16 )
+				return ConvertTemplated<vlUInt128, vlUInt128>( lpSource, lpDest, uiWidth, uiHeight, SourceInfo, DestInfo );
 		}
 		return vlFalse;
 	}
