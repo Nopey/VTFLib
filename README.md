@@ -1,3 +1,32 @@
+# VTFLib - Magnus' fork
+Notable changes:
+- Added **read-only** support for more HDR Formats, including BC6H
+- Wrote cmake scripts for VTF utilities (VTFEdit, VTFCmd)
+- Removed binary blobs for thirdparties
+
+Known issues:
+- Linux port has likely regressed
+- The only non-floating point HDR format I've tested, RGBA16161616,
+  appears darker than the other HDR formats;
+  may be an issue with how I'm creating my test files.
+
+Planned changes:
+- PFM Import
+- Support writing BC6H and other HDR formats
+
+Includes code from the following VTFLib versions:
+- Neil 'Jed' Jedrzejewski & Ryan Gregg's original work, https://github.com/NeilJed/VTFLib
+- Joshua-Ashton's fork, https://github.com/Joshua-Ashton/VTFLib  
+  ("VTFEdit Reloaded", Compressonator port, many other changes taken for granted)
+- StrataSource fork, https://github.com/StrataSource/VTFLib  
+  (Partial CMake port, VTF 7.6 support, BC7 support)
+
+Honorable mention:
+- TricoEverfire's fork https://github.com/Trico-Everfire/VTFLib/tree/feat/floating_point_support  
+  Did not notice their fork or [PR] to Strata before starting work.
+
+[PR]: https://github.com/StrataSource/VTFLib/pull/9
+
 # VTFLib - A Valve VTF and VMT image format programming library.
 
 VTFLib is a LGPL open source programming library that provides a C and C++ API that, with a few simple functions, can open and save .vtf and .vmt files, providing access to all known features. The library functions independent of Steam, allowing third party applications to use the library without Steam present or runningi on the target system.
