@@ -3425,6 +3425,16 @@ namespace VTFEdit
 			this->txtVMTFile->Focus();
 		}
 
+		private: void OpenOrImport(array<System::String ^>^ sFileNames, bool bTemp)
+		{
+			if ( sFileNames->Length == 0 )
+				return;
+			else if ( sFileNames[0]->ToLower()->EndsWith( ".vtf" ) || sFileNames[0]->ToLower()->EndsWith( ".vmt" ) )
+				Open( sFileNames[0], bTemp );
+			else
+				Import( sFileNames );
+		}
+
 		private: void Open(System::String ^sFileName, bool bTemp)
 		{
 			this->Close();
@@ -5230,10 +5240,7 @@ namespace VTFEdit
 		private: System::Void Control_DragDrop(System::Object ^  sender, System::Windows::Forms::DragEventArgs ^  e)
 		{
 			array< System::String^>^ lpFiles = static_cast<array< System::String^>^>(e->Data->GetData(System::Windows::Forms::DataFormats::FileDrop));
-			if(lpFiles->Length > 0)
-			{
-				this->Open(lpFiles[0], false);
-			}
+			this->OpenOrImport( lpFiles, false );
 		}
 
 		private: System::Void Control_DragEnter(System::Object ^  sender, System::Windows::Forms::DragEventArgs ^  e)
@@ -5245,10 +5252,22 @@ namespace VTFEdit
 				{
 					if(!System::IO::Directory::Exists(lpFiles[0]))
 					{
-						if(lpFiles[0]->ToLower()->EndsWith(".vmt") ||
+						if( lpFiles[0]->ToLower()->EndsWith(".vmt") ||
 							lpFiles[0]->ToLower()->EndsWith(".vtf"))
 						{
 							e->Effect = System::Windows::Forms::DragDropEffects::All;
+						}
+						else if(
+							lpFiles[0]->ToLower()->EndsWith(".bmp") ||
+							lpFiles[0]->ToLower()->EndsWith(".jpg") ||
+							lpFiles[0]->ToLower()->EndsWith(".jpeg")||
+							lpFiles[0]->ToLower()->EndsWith(".png") ||
+							lpFiles[0]->ToLower()->EndsWith(".tga")
+							// lpFiles[0]->ToLower()->EndsWith(".txt") // VTex-style input ?
+						)
+						{
+							// Import
+							e->Effect = System::Windows::Forms::DragDropEffects::Link;
 						}
 					}
 				}
