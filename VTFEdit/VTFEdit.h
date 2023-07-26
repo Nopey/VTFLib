@@ -3877,7 +3877,88 @@ namespace VTFEdit
 
 		private: void ReplaceMip(System::String ^sFileName)
 		{
-			// TODO: Magnus: Implement ReplaceMip
+			if ( !VTFFile )
+			{
+				MessageBox::Show( "Can't replace mip: no VTF?\n\nTell a programmer.", Application::ProductName, MessageBoxButtons::OK, MessageBoxIcon::Error );
+				return;
+			}
+
+			// Load the image
+			System::IntPtr marshalAlloc = System::Runtime::InteropServices::Marshal::StringToHGlobalAnsi( sFileName );
+			bool bLoadedImage = ilLoadImage( (char const *)marshalAlloc.ToPointer() );
+			System::Runtime::InteropServices::Marshal::FreeHGlobal( marshalAlloc );
+			if ( !bLoadedImage )
+			{
+				MessageBox::Show( "Error loading image for mip.", Application::ProductName, MessageBoxButtons::OK, MessageBoxIcon::Error );
+				return;
+			}
+
+			// TODO: Magnus: HDR codepath
+			if(!ilConvertImage(IL_RGBA, IL_UNSIGNED_BYTE))
+			{
+				MessageBox::Show( "Error converting image.", Application::ProductName, MessageBoxButtons::OK, MessageBoxIcon::Error );
+				return;
+			}
+
+			// Get the size of the imported image
+			vlUInt uiFileWidth = (vlUInt)ilGetInteger( IL_IMAGE_WIDTH );
+			vlUInt uiFileHeight = (vlUInt)ilGetInteger( IL_IMAGE_HEIGHT );
+
+			// check all the mipmaps, one might be the right size
+			vlUInt uiFrame = (vlUInt)Convert::ToUInt32( this->numFrame->Value );
+			vlUInt uiFace = (vlUInt)Convert::ToUInt32( this->numFace->Value );
+			vlUInt uiSlice = (vlUInt)Convert::ToUInt32( this->numSlice->Value );
+
+			vlUInt uiWidth = 0;
+			vlUInt uiHeight = 0;
+			vlUInt uiDepth = 0;
+
+			vlUInt uiMipmap = 0;
+			for ( uiMipmap = 0; uiMipmap < VTFFile->GetMipmapCount(); uiMipmap++ )
+			{
+				this->VTFFile->ComputeMipmapDimensions( this->VTFFile->GetWidth(), this->VTFFile->GetHeight(),
+														this->VTFFile->GetDepth(), uiMipmap, uiWidth, uiHeight, uiDepth );
+
+				if ( uiSlice >= uiDepth )
+					uiSlice = uiDepth - 1;
+
+				if( uiWidth == uiFileWidth && uiHeight == uiFileHeight )
+					break; // success!
+			}
+
+			// if we couldn't find a matching mip
+			if ( uiMipmap >= VTFFile->GetMipmapCount() )
+			{
+				// Get visible mip size for error message
+				uiMipmap = (vlUInt)Convert::ToUInt32( this->numMipmap->Value );
+				this->VTFFile->ComputeMipmapDimensions( this->VTFFile->GetWidth(), this->VTFFile->GetHeight(),
+														this->VTFFile->GetDepth(), uiMipmap, uiWidth, uiHeight,
+														uiDepth );
+				auto message =
+					System::String::Concat( "Error replacing mip:\n\nCurrently selected mip is ", uiWidth, "x", uiHeight,
+											", but selected file is ", uiFileWidth, "x", uiFileHeight, "!" );
+				MessageBox::Show( message, Application::ProductName, MessageBoxButtons::OK, MessageBoxIcon::Error );
+
+				return;
+			}
+
+			// Copy the image data.
+			Byte *pMipData = VTFFile->GetData( uiFrame, uiFace, uiSlice, uiMipmap );
+			// TODO: Magnus: HDR codepath
+			if (!VTFFile->Convert(ilGetData(), pMipData, uiWidth, uiHeight, IMAGE_FORMAT_RGBA8888, VTFFile->GetFormat()))
+			{
+
+				// Get visible mip size for error message
+				auto message = System::String::Concat( "Error converting imageformats for mip replacement:\n\n", gcnew System::String(vlGetLastError()) );
+				MessageBox::Show( message, Application::ProductName, MessageBoxButtons::OK, MessageBoxIcon::Error );
+
+				return;
+			}
+
+
+			// show the newly edited mip
+			this->numMipmap->Value = uiMipmap;
+			UpdateVTFFile();
 		}
 
 		private: void Close()
