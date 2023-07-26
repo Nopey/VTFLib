@@ -202,6 +202,7 @@ namespace VTFEdit
 	private: System::Windows::Forms::MenuItem ^  btnPaste;
 	private: System::Windows::Forms::MenuItem ^  btnEditSpace1;
 	private: System::Windows::Forms::MenuItem ^  btnReplaceMip;
+	private: System::Windows::Forms::OpenFileDialog ^  dlgReplaceMip;
 	private: System::Windows::Forms::NumericUpDown ^  numImageStartFrame;
 	private: System::Windows::Forms::NumericUpDown ^  numImageBumpmapScale;
 	private: System::Windows::Forms::MenuItem ^  btnRecentFiles;
@@ -432,6 +433,7 @@ namespace VTFEdit
 			this->btnVMTFileValidateStrict = (gcnew System::Windows::Forms::MenuItem());
 			this->dlgImportFile = (gcnew System::Windows::Forms::OpenFileDialog());
 			this->dlgExportFile = (gcnew System::Windows::Forms::SaveFileDialog());
+			this->dlgReplaceMip = ( gcnew System::Windows::Forms::OpenFileDialog() );
 			this->barTool = (gcnew System::Windows::Forms::ToolBar());
 			this->btnToolImport = (gcnew System::Windows::Forms::ToolBarButton());
 			this->btnToolOpen = (gcnew System::Windows::Forms::ToolBarButton());
@@ -1798,6 +1800,12 @@ namespace VTFEdit
 			this->dlgImportFile->Filter = resources->GetString(L"dlgImportFile.Filter");
 			this->dlgImportFile->Multiselect = true;
 			this->dlgImportFile->Title = L"Import File";
+			// 
+			// dlgReplaceMip
+			// 
+			this->dlgReplaceMip->Filter = resources->GetString( L"dlgImportFile.Filter" );
+			this->dlgReplaceMip->Multiselect = false;
+			this->dlgReplaceMip->Title = L"Replace Mip";
 			// 
 			// dlgExportFile
 			// 
@@ -3867,6 +3875,11 @@ namespace VTFEdit
 			//ilShutDown();
 		}
 
+		private: void ReplaceMip(System::String ^sFileName)
+		{
+			// TODO: Magnus: Implement ReplaceMip
+		}
+
 		private: void Close()
 		{
 			this->btnToolSave->Enabled = false;
@@ -4133,7 +4146,10 @@ namespace VTFEdit
 
 		private: System::Void btnReplaceMip_Click(System::Object ^  sender, System::EventArgs ^  e)
 		{
-			// TODO: Magnus: Implement ReplaceMip
+			if ( this->dlgReplaceMip->ShowDialog() == System::Windows::Forms::DialogResult::OK )
+			{
+				this->ReplaceMip( this->dlgReplaceMip->FileName );
+			}
 		}
 
 		private: System::Void btnChannel_Click(System::Object ^  sender, System::EventArgs ^  e)
