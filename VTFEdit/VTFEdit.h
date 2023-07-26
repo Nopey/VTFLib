@@ -1807,20 +1807,20 @@ namespace VTFEdit
 			// 
 			// btnToolImport
 			// 
-			this->btnToolImport->ImageIndex = 0;
+			this->btnToolImport->ImageKey = "imgToolImport";
 			this->btnToolImport->Name = L"btnToolImport";
 			this->btnToolImport->ToolTipText = L"Import";
 			// 
 			// btnToolOpen
 			// 
-			this->btnToolOpen->ImageIndex = 1;
+			this->btnToolOpen->ImageKey = "imgToolOpen";
 			this->btnToolOpen->Name = L"btnToolOpen";
 			this->btnToolOpen->ToolTipText = L"Open";
 			// 
 			// btnToolSave
 			// 
 			this->btnToolSave->Enabled = false;
-			this->btnToolSave->ImageIndex = 2;
+			this->btnToolSave->ImageKey = "imgToolSave";
 			this->btnToolSave->Name = L"btnToolSave";
 			this->btnToolSave->ToolTipText = L"Save";
 			// 
@@ -1832,26 +1832,31 @@ namespace VTFEdit
 			// btnToolCopy
 			// 
 			this->btnToolCopy->Enabled = false;
-			this->btnToolCopy->ImageIndex = 3;
+			this->btnToolCopy->ImageKey = "imgToolCopy";
 			this->btnToolCopy->Name = L"btnToolCopy";
 			this->btnToolCopy->ToolTipText = L"Copy";
 			// 
 			// btnToolPaste
 			// 
 			this->btnToolPaste->Enabled = false;
-			this->btnToolPaste->ImageIndex = 4;
+			this->btnToolPaste->ImageKey = "imgToolPaste";
 			this->btnToolPaste->Name = L"btnToolPaste";
 			this->btnToolPaste->ToolTipText = L"Paste";
 			// 
 			// imgTool
 			// 
-			this->imgTool->ImageStream = (cli::safe_cast<System::Windows::Forms::ImageListStreamer^>(resources->GetObject(L"imgTool.ImageStream")));
-			this->imgTool->TransparentColor = System::Drawing::Color::Fuchsia;
-			this->imgTool->Images->SetKeyName(0, L"");
-			this->imgTool->Images->SetKeyName(1, L"");
-			this->imgTool->Images->SetKeyName(2, L"");
-			this->imgTool->Images->SetKeyName(3, L"");
-			this->imgTool->Images->SetKeyName(4, L"");
+			for ( auto toolName : {
+					  "imgToolImport",
+					  "imgToolOpen",
+					  "imgToolSave",
+					  "imgToolCopy",
+					  "imgToolPaste",
+				  } )
+			{
+				auto strToolName = gcnew System::String( toolName );
+				auto image = cli::safe_cast<System::Drawing::Image ^>( resources->GetObject( strToolName ) );
+				this->imgTool->Images->Add( strToolName, image );
+			}
 			// 
 			// splSidebar
 			// 
