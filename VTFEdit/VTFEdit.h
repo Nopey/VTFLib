@@ -1054,7 +1054,7 @@ namespace VTFEdit
 			this->lblMipmap->Name = L"lblMipmap";
 			this->lblMipmap->Size = System::Drawing::Size(72, 22);
 			this->lblMipmap->TabIndex = 6;
-			this->lblMipmap->Text = L"Mipmap:";
+			this->lblMipmap->Text = L"Mipmaps";
 			// 
 			// numMipmap
 			// 
@@ -1237,7 +1237,7 @@ namespace VTFEdit
 			this->lblImageReflectivityLabel->Name = L"lblImageReflectivityLabel";
 			this->lblImageReflectivityLabel->Size = System::Drawing::Size(56, 22);
 			this->lblImageReflectivityLabel->TabIndex = 18;
-			this->lblImageReflectivityLabel->Text = L"Reflectivity:";
+			this->lblImageReflectivityLabel->Text = L"Reflec.:";
 			// 
 			// lblImageBumpmapScaleLabel
 			// 
@@ -1245,7 +1245,7 @@ namespace VTFEdit
 			this->lblImageBumpmapScaleLabel->Name = L"lblImageBumpmapScaleLabel";
 			this->lblImageBumpmapScaleLabel->Size = System::Drawing::Size(56, 22);
 			this->lblImageBumpmapScaleLabel->TabIndex = 16;
-			this->lblImageBumpmapScaleLabel->Text = L"Bumpmap:";
+			this->lblImageBumpmapScaleLabel->Text = L"Bump:";
 			// 
 			// lblImageStartFrameLabel
 			// 
@@ -1270,7 +1270,7 @@ namespace VTFEdit
 			this->lblImageMipmapsLabel->Name = L"lblImageMipmapsLabel";
 			this->lblImageMipmapsLabel->Size = System::Drawing::Size(56, 22);
 			this->lblImageMipmapsLabel->TabIndex = 14;
-			this->lblImageMipmapsLabel->Text = L"Mipmaps:";
+			this->lblImageMipmapsLabel->Text = L"Mipmaps";
 			// 
 			// lblImageFaces
 			// 
