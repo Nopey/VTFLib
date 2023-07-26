@@ -40,6 +40,7 @@ endif()
 target_sources("${VTFLIB}" PRIVATE
 	Resource.rc
 
+	Enumerations.cpp
 	Error.cpp
 	FileReader.cpp
 	FileWriter.cpp

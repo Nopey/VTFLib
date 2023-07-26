@@ -195,6 +195,13 @@ VTFLIB_API vlSingle vlGetFloat(VTFLibOption Option);
 //! Set the specified option.
 VTFLIB_API vlVoid vlSetFloat(VTFLibOption Option, vlSingle sValue);
 
+
+VTFLIB_API VTFImageFormat StringToImageFormat( const vlChar *cString );
+VTFLIB_API VTFImageFlag StringToImageFlag( const vlChar *cString );
+VTFLIB_API VTFMipmapFilter StringToMipmapFilter( const vlChar *cString );
+VTFLIB_API VTFResizeMethod StringToResizeMethod( const vlChar *cString );
+
+
 #ifdef __cplusplus
 }
 #endif

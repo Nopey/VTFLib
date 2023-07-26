@@ -16,8 +16,6 @@ target_link_libraries(VTFCmd PRIVATE DevIL "${USABLE_VTFLIB}")
 target_sources(VTFCmd PRIVATE
 	VTFCmd.rc
 
-	enumerations.c
-	enumerations.h
 	resource.h
 	vtfcmd.c
 )

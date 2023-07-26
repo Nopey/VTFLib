@@ -30,6 +30,15 @@ using namespace System::Drawing;
 
 namespace VTFEdit
 {
+	static VTFImageFormat ManagedStringToImageFormat( System::String ^strName )
+	{
+		using System::Runtime::InteropServices::Marshal;
+		auto unmanagedName = Marshal::StringToHGlobalAnsi( strName );
+		VTFImageFormat format = StringToImageFormat( (vlChar const *)unmanagedName.ToPointer() );
+		Marshal::FreeHGlobal( unmanagedName );
+		return format;
+	}
+
 	public ref class CVTFOptions : public System::Windows::Forms::Form
 	{
 	public:
@@ -142,7 +151,7 @@ namespace VTFEdit
 	private: System::Windows::Forms::TextBox^ txtInformationVersion;
 	private: System::Windows::Forms::Label^ lblInformationModification;
 	private: System::Windows::Forms::Label^ lblInformationVersion;
-private: System::Windows::Forms::CheckBox^ chkSrgb;
+	private: System::Windows::Forms::CheckBox^ chkSrgb;
 
 	private: System::ComponentModel::IContainer^ components;
 
@@ -375,12 +384,13 @@ private: System::Windows::Forms::CheckBox^ chkSrgb;
 			// 
 			this->cboFormat->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->cboFormat->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8));
-			this->cboFormat->Items->AddRange(gcnew cli::array< System::Object^  >(27) {
-				L"RGBA8888", L"ABGR8888", L"RGB888", L"BGR888",
-					L"RGB565", L"I8", L"IA88", L"P8 (Not supported)", L"A8", L"RGB888 Bluescreen", L"BGR888 Bluescreen", L"ARGB8888", L"BGRA8888",
-					L"DXT1", L"DXT3", L"DXT5", L"BGRX8888", L"BGR565", L"BGRX5551", L"BGRA4444", L"DXT1 With One Bit Alpha", L"BGRA5551", L"UV88",
-					L"UVWQ8888", L"RGBA16161616F", L"RGBA16161616", L"UVLX8888"
-			});
+			for (int format = 0; format < VTFImageFormat::IMAGE_FORMAT_COUNT; format++)
+			{
+				auto const &info = VTFLib::CVTFFile::GetImageFormatInfo( VTFImageFormat( format ) );
+				if ( !info.bIsSupported )
+					continue;
+				this->cboFormat->Items->Add( gcnew System::String( info.lpName ) );
+			}
 			this->cboFormat->Location = System::Drawing::Point(125, 28);
 			this->cboFormat->Name = L"cboFormat";
 			this->cboFormat->Size = System::Drawing::Size(192, 28);
@@ -456,18 +466,20 @@ private: System::Windows::Forms::CheckBox^ chkSrgb;
 			// 
 			this->cboAlphaFormat->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->cboAlphaFormat->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8));
-			this->cboAlphaFormat->Items->AddRange(gcnew cli::array< System::Object^  >(27) {
-				L"RGBA8888", L"ABGR8888", L"RGB888", L"BGR888",
-					L"RGB565", L"I8", L"IA88", L"P8 (Not supported)", L"A8", L"RGB888 Bluescreen", L"BGR888 Bluescreen", L"ARGB8888", L"BGRA8888",
-					L"DXT1", L"DXT3", L"DXT5", L"BGRX8888", L"BGR565", L"BGRX5551", L"BGRA4444", L"DXT1 With One Bit Alpha", L"BGRA5551", L"UV88",
-					L"UVWQ8888", L"RGBA16161616F", L"RGBA16161616", L"UVLX8888"
-			});
+			for ( int format = 0; format < VTFImageFormat::IMAGE_FORMAT_COUNT; format++ )
+			{
+				auto const &info = VTFLib::CVTFFile::GetImageFormatInfo( VTFImageFormat( format ) );
+				if ( !info.bIsSupported )
+					continue;
+				this->cboAlphaFormat->Items->Add( gcnew System::String( info.lpName ) );
+			}
 			this->cboAlphaFormat->Location = System::Drawing::Point(125, 55);
 			this->cboAlphaFormat->Name = L"cboAlphaFormat";
 			this->cboAlphaFormat->Size = System::Drawing::Size(192, 28);
 			this->cboAlphaFormat->TabIndex = 3;
-			this->tipMain->SetToolTip(this->cboAlphaFormat, L"The output image format for textures with an alpha channel. Common values are DXT"
-				L"5 and BGRA888.");
+			this->tipMain->SetToolTip(
+				this->cboAlphaFormat,
+				L"What output format to use if input has an alpha channel. Common values are DXT5 and BGRA888." );
 			// 
 			// lblAlphaFormat
 			// 
@@ -1120,15 +1132,14 @@ private: System::Windows::Forms::CheckBox^ chkSrgb;
 	{
 		VTFImageFormat get()
 		{
-			return (VTFImageFormat)this->cboFormat->SelectedIndex;
+			return (VTFImageFormat)ManagedStringToImageFormat( (System::String ^)this->cboFormat->SelectedItem );
 		}
 		void set(VTFImageFormat ImageFormat)
 		{
-			int iIndex = Convert::ToInt32(ImageFormat);
-			if (iIndex >= 0 && iIndex < this->cboFormat->Items->Count)
-			{
-				this->cboFormat->SelectedIndex = iIndex;
-			}
+			auto const &info = VTFLib::CVTFFile::GetImageFormatInfo( VTFImageFormat( ImageFormat ) );
+			if ( !info.bIsSupported )
+					return;
+			this->cboAlphaFormat->SelectedItem = gcnew System::String( info.lpName );
 		}
 	}
 
@@ -1136,15 +1147,14 @@ private: System::Windows::Forms::CheckBox^ chkSrgb;
 	{
 		VTFImageFormat get()
 		{
-			return (VTFImageFormat)this->cboAlphaFormat->SelectedIndex;
+			return (VTFImageFormat)ManagedStringToImageFormat( ( System::String ^ ) this->cboAlphaFormat->SelectedItem );
 		}
 		void set(VTFImageFormat ImageFormat)
 		{
-			int iIndex = Convert::ToInt32(ImageFormat);
-			if (iIndex >= 0 && iIndex < this->cboAlphaFormat->Items->Count)
-			{
-				this->cboAlphaFormat->SelectedIndex = iIndex;
-			}
+			auto const &info = VTFLib::CVTFFile::GetImageFormatInfo( VTFImageFormat( ImageFormat ) );
+			if ( !info.bIsSupported )
+				return;
+			this->cboAlphaFormat->SelectedItem = gcnew System::String( info.lpName );
 		}
 	}
 

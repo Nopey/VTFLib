@@ -1,5 +1,5 @@
 /*
- * VTFCmd
+ * VTFLib
  * Copyright (C) 2005-2010 Neil Jedrzejewski & Ryan Gregg
  *
  * This program is free software; you can redistribute it and/or
@@ -18,117 +18,23 @@
  */
 
 #include "stdafx.h"
+#include "VTFLib.h"
 
 VTFImageFormat StringToImageFormat(const vlChar *cString)
 {
-	if(stricmp(cString, "RGBA8888") == 0)
+	if ( !cString )
+		return IMAGE_FORMAT_NONE;
+
+	for ( int f = 0; f < VTFImageFormat::IMAGE_FORMAT_COUNT; f++ )
 	{
-		return IMAGE_FORMAT_RGBA8888;
+		VTFImageFormat format = VTFImageFormat( f );
+		auto const &info = VTFLib::CVTFFile::GetImageFormatInfo( format );
+		if ( info.lpName && stricmp( cString, info.lpName ) == 0 )
+			return format;
 	}
-	else if(stricmp(cString, "ABGR8888") == 0)
-	{
-		return IMAGE_FORMAT_ABGR8888;
-	}
-	else if(stricmp(cString, "RGB888") == 0)
-	{
-		return IMAGE_FORMAT_RGB888;
-	}
-	else if(stricmp(cString, "BGR888") == 0)
-	{
-		return IMAGE_FORMAT_BGR888;
-	}
-	else if(stricmp(cString, "RGB565") == 0)
-	{
-		return IMAGE_FORMAT_RGB565;
-	}
-	else if(stricmp(cString, "I8") == 0)
-	{
-		return IMAGE_FORMAT_I8;
-	}
-	else if(stricmp(cString, "IA88") == 0)
-	{
-		return IMAGE_FORMAT_IA88;
-	}
-	else if(stricmp(cString, "A8") == 0)
-	{
-		return IMAGE_FORMAT_A8;
-	}
-	else if(stricmp(cString, "RGB888_BLUESCREEN") == 0)
-	{
-		return IMAGE_FORMAT_RGB888_BLUESCREEN;
-	}
-	else if(stricmp(cString, "BGR888_BLUESCREEN") == 0)
-	{
-		return IMAGE_FORMAT_BGR888_BLUESCREEN;
-	}
-	else if(stricmp(cString, "ARGB8888") == 0)
-	{
-		return IMAGE_FORMAT_ARGB8888;
-	}
-	else if(stricmp(cString, "BGRA8888") == 0)
-	{
-		return IMAGE_FORMAT_BGRA8888;
-	}
-	else if(stricmp(cString, "DXT1") == 0)
-	{
-		return IMAGE_FORMAT_DXT1;
-	}
-	else if(stricmp(cString, "DXT3") == 0)
-	{
-		return IMAGE_FORMAT_DXT3;
-	}
-	else if(stricmp(cString, "DXT5") == 0)
-	{
-		return IMAGE_FORMAT_DXT5;
-	}
-	else if(stricmp(cString, "BGRX8888") == 0)
-	{
-		return IMAGE_FORMAT_BGRX8888;
-	}
-	else if(stricmp(cString, "BGR565") == 0)
-	{
-		return IMAGE_FORMAT_BGR565;
-	}
-	else if(stricmp(cString, "BGRX5551") == 0)
-	{
-		return IMAGE_FORMAT_BGRX5551;
-	}
-	else if(stricmp(cString, "BGRA4444") == 0)
-	{
-		return IMAGE_FORMAT_BGRA4444;
-	}
-	else if(stricmp(cString, "DXT1_ONEBITALPHA") == 0)
-	{
-		return IMAGE_FORMAT_DXT1_ONEBITALPHA;
-	}
-	else if(stricmp(cString, "BGRA5551") == 0)
-	{
-		return IMAGE_FORMAT_BGRA5551;
-	}
-	else if(stricmp(cString, "UV88") == 0)
-	{
-		return IMAGE_FORMAT_UV88;
-	}
-	else if(stricmp(cString, "UVWQ8888") == 0)
-	{
-		return IMAGE_FORMAT_UVWQ8888;
-	}
-	else if(stricmp(cString, "RGBA16161616F") == 0)
-	{
-		return IMAGE_FORMAT_RGBA16161616F;
-	}
-	else if(stricmp(cString, "RGBA16161616") == 0)
-	{
-		return IMAGE_FORMAT_RGBA16161616;
-	}
-	else if(stricmp(cString, "UVLX8888") == 0)
-	{
-		return IMAGE_FORMAT_UVLX8888;
-	}
-	else
-	{
-		return IMAGE_FORMAT_COUNT;
-	}
+
+	// backwards compat notice: previously (when this file was part of VTFCmd), failure would return _COUNT.
+	return IMAGE_FORMAT_NONE;
 }
 
 VTFImageFlag StringToImageFlag(const vlChar *cString)

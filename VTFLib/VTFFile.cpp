@@ -267,7 +267,7 @@ vlBool CVTFFile::Init(vlUInt uiWidth, vlUInt uiHeight, vlUInt uiFrames, vlUInt u
 
 	if(!this->GetImageFormatInfo(ImageFormat).bIsSupported)
 	{
-		LastError.Set("Image format not supported.");
+		LastError.SetFormatted( "Format %s (%d) not supported.", this->GetImageFormatInfo( ImageFormat ).lpName, ImageFormat );
 		return vlFalse;
 	}
 
