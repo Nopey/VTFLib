@@ -198,7 +198,10 @@ namespace VTFEdit
 	private: System::Windows::Forms::ToolBarButton ^  btnSeparator1;
 	private: System::Windows::Forms::ToolBarButton ^  btnToolCopy;
 	private: System::Windows::Forms::ToolBarButton ^  btnToolPaste;
+	private: System::Windows::Forms::ToolBarButton ^  btnToolReplaceMip;
 	private: System::Windows::Forms::MenuItem ^  btnPaste;
+	private: System::Windows::Forms::MenuItem ^  btnEditSpace1;
+	private: System::Windows::Forms::MenuItem ^  btnReplaceMip;
 	private: System::Windows::Forms::NumericUpDown ^  numImageStartFrame;
 	private: System::Windows::Forms::NumericUpDown ^  numImageBumpmapScale;
 	private: System::Windows::Forms::MenuItem ^  btnRecentFiles;
@@ -293,6 +296,8 @@ namespace VTFEdit
 			this->btnEditMenu = (gcnew System::Windows::Forms::MenuItem());
 			this->btnCopy = (gcnew System::Windows::Forms::MenuItem());
 			this->btnPaste = (gcnew System::Windows::Forms::MenuItem());
+			this->btnEditSpace1 = (gcnew System::Windows::Forms::MenuItem());
+			this->btnReplaceMip = (gcnew System::Windows::Forms::MenuItem());
 			this->btnViewMenu = (gcnew System::Windows::Forms::MenuItem());
 			this->btnChannelMenu = (gcnew System::Windows::Forms::MenuItem());
 			this->btnChannelRGB = (gcnew System::Windows::Forms::MenuItem());
@@ -434,6 +439,7 @@ namespace VTFEdit
 			this->btnSeparator1 = (gcnew System::Windows::Forms::ToolBarButton());
 			this->btnToolCopy = (gcnew System::Windows::Forms::ToolBarButton());
 			this->btnToolPaste = (gcnew System::Windows::Forms::ToolBarButton());
+			this->btnToolReplaceMip = ( gcnew System::Windows::Forms::ToolBarButton() );
 			this->imgTool = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->splSidebar = (gcnew System::Windows::Forms::Splitter());
 			this->dlgExtractDirectoryItem = (gcnew System::Windows::Forms::FolderBrowserDialog());
@@ -576,7 +582,7 @@ namespace VTFEdit
 			// btnEditMenu
 			// 
 			this->btnEditMenu->Index = 1;
-			this->btnEditMenu->MenuItems->AddRange(gcnew cli::array< System::Windows::Forms::MenuItem^  >(2) { this->btnCopy, this->btnPaste });
+			this->btnEditMenu->MenuItems->AddRange(gcnew cli::array< System::Windows::Forms::MenuItem^  >(4) { this->btnCopy, this->btnPaste, this->btnEditSpace1, this->btnReplaceMip });
 			this->btnEditMenu->Text = L"&Edit";
 			// 
 			// btnCopy
@@ -594,10 +600,23 @@ namespace VTFEdit
 			this->btnPaste->Shortcut = System::Windows::Forms::Shortcut::CtrlV;
 			this->btnPaste->Text = L"&Paste";
 			this->btnPaste->Click += gcnew System::EventHandler(this, &CVTFEdit::btnPaste_Click);
+			//
+			// btnEditSpace1
+			//
+			this->btnEditSpace1->Index = 2;
+			this->btnEditSpace1->Text = L"-";
+			// 
+			// btnReplaceMip
+			// 
+			this->btnReplaceMip->Enabled = false;
+			this->btnReplaceMip->Index = 3;
+			this->btnReplaceMip->Shortcut = System::Windows::Forms::Shortcut::CtrlShiftM;
+			this->btnReplaceMip->Text = L"Replace &Mip";
+			this->btnReplaceMip->Click += gcnew System::EventHandler(this, &CVTFEdit::btnReplaceMip_Click);
 			// 
 			// btnViewMenu
 			// 
-			this->btnViewMenu->Index = 2;
+			this->btnViewMenu->Index = 4;
 			this->btnViewMenu->MenuItems->AddRange(gcnew cli::array< System::Windows::Forms::MenuItem^  >(3) {
 				this->btnChannelMenu, this->btnMask,
 					this->btnTile
@@ -1789,9 +1808,9 @@ namespace VTFEdit
 			// 
 			// barTool
 			// 
-			this->barTool->Buttons->AddRange(gcnew cli::array< System::Windows::Forms::ToolBarButton^  >(6) {
+			this->barTool->Buttons->AddRange(gcnew cli::array< System::Windows::Forms::ToolBarButton^  >(7) {
 				this->btnToolImport, this->btnToolOpen,
-					this->btnToolSave, this->btnSeparator1, this->btnToolCopy, this->btnToolPaste
+					this->btnToolSave, this->btnSeparator1, this->btnToolCopy, this->btnToolPaste, this->btnToolReplaceMip
 			});
 			this->barTool->ButtonSize = System::Drawing::Size(23, 22);
 			this->barTool->DropDownArrows = true;
@@ -1843,6 +1862,13 @@ namespace VTFEdit
 			this->btnToolPaste->Name = L"btnToolPaste";
 			this->btnToolPaste->ToolTipText = L"Paste";
 			// 
+			// btnToolReplaceMip
+			// 
+			this->btnToolReplaceMip->Enabled = false;
+			this->btnToolReplaceMip->ImageKey = "imgToolReplaceMip";
+			this->btnToolReplaceMip->Name = L"btnToolReplaceMip";
+			this->btnToolReplaceMip->ToolTipText = L"Replace Mip";
+			// 
 			// imgTool
 			// 
 			for ( auto toolName : {
@@ -1851,6 +1877,7 @@ namespace VTFEdit
 					  "imgToolSave",
 					  "imgToolCopy",
 					  "imgToolPaste",
+					  "imgToolReplaceMip",
 				  } )
 			{
 				auto strToolName = gcnew System::String( toolName );
@@ -3407,6 +3434,10 @@ namespace VTFEdit
 			{
 				this->btnPaste_Click(this->btnPaste, System::EventArgs::Empty);
 			}
+			else if ( e->Button == this->btnToolReplaceMip )
+			{
+				this->btnReplaceMip_Click( this->btnToolReplaceMip, System::EventArgs::Empty );
+			}
 		}
 
 		private: void New()
@@ -3475,6 +3506,9 @@ namespace VTFEdit
 
 					this->btnToolCopy->Enabled = true;
 					this->btnCopy->Enabled = true;
+
+					this->btnReplaceMip->Enabled = true;
+					this->btnToolReplaceMip->Enabled = true;
 				}
 				else
 				{
@@ -3713,6 +3747,9 @@ namespace VTFEdit
 
 					this->btnToolCopy->Enabled = true;
 					this->btnCopy->Enabled = true;
+
+					this->btnReplaceMip->Enabled = true;
+					this->btnToolReplaceMip->Enabled = true;
 				}
 				else
 				{
@@ -3841,6 +3878,9 @@ namespace VTFEdit
 
 			this->btnToolCopy->Enabled = false;
 			this->btnCopy->Enabled = false;
+
+			this->btnReplaceMip->Enabled = false;
+			this->btnToolReplaceMip->Enabled = false;
 
 			this->trkHDRExposure->Enabled = false;
 
@@ -4072,6 +4112,9 @@ namespace VTFEdit
 
 					this->btnToolCopy->Enabled = true;
 					this->btnCopy->Enabled = true;
+
+					this->btnReplaceMip->Enabled = true;
+					this->btnToolReplaceMip->Enabled = true;
 				}
 				else
 				{
@@ -4086,6 +4129,11 @@ namespace VTFEdit
 			{
 				MessageBox::Show("Operation not supported.\n\nVTFEdit has determined that the current thread apartment state does not\nsupport this operation. This is a .NET design flaw.", Application::ProductName, MessageBoxButtons::OK, MessageBoxIcon::Error);
 			}
+		}
+
+		private: System::Void btnReplaceMip_Click(System::Object ^  sender, System::EventArgs ^  e)
+		{
+			// TODO: Magnus: Implement ReplaceMip
 		}
 
 		private: System::Void btnChannel_Click(System::Object ^  sender, System::EventArgs ^  e)
