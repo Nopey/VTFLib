@@ -7,3 +7,6 @@
 [submodule "thirdparty/zlib"]
 	path = thirdparty/zlib
 	url = https://github.com/madler/zlib.git
+[submodule "thirdparty/libsquish"]
+	path = thirdparty/libsquish
+	url = https://github.com/oblivioncth/libsquish.git
