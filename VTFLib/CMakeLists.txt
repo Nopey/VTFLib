@@ -30,7 +30,16 @@ target_compile_definitions("${VTFLIB}" PRIVATE VTFLIB_EXPORTS)
 target_precompile_headers("${VTFLIB}" PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${PROJECT_SOURCE_DIR}/VTFLib/stdafx.h>")
 target_include_directories("${VTFLIB}" PRIVATE ${PROJECT_SOURCE_DIR}/thirdparty/miniz ${PROJECT_SOURCE_DIR}/thirdparty/include)
 target_include_directories("${VTFLIB}" INTERFACE ${PROJECT_SOURCE_DIR}/lib)
-target_link_libraries("${VTFLIB}" PRIVATE CMP_Compressonator)
+
+if(VTFLIB_DXT_BACKEND_COMPRESSONATOR)
+	target_link_libraries("${VTFLIB}" PRIVATE CMP_Compressonator)
+	target_compile_definitions("${VTFLIB}" PRIVATE VTFLIB_DXT_BACKEND_COMPRESSONATOR)
+endif()
+
+if(VTFLIB_DXT_BACKEND_LIBSQUISH)
+	target_link_libraries("${VTFLIB}" PRIVATE libsquish_squish)
+	target_compile_definitions("${VTFLIB}" PRIVATE VTFLIB_DXT_BACKEND_LIBSQUISH)
+endif()
 
 # Link against runtime lib
 if (UNIX)

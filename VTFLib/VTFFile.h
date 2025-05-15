@@ -753,6 +753,9 @@ namespace VTFLib
 
 		// BCn format compression function
 		static vlBool CompressBCn(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt uiHeight, VTFImageFormat DestFormat);
+#ifdef VTFLIB_DXT_BACKEND_LIBSQUISH
+		static vlBool CompressLibSquish(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt uiHeight, VTFImageFormat DestFormat);
+#endif
 
 	public:
 

@@ -2,12 +2,19 @@
 # Thirdparty Libraries
 #
 
-# Compressonator
-# HACK: messing with cmake variables to avoid running the main cmakelists of compressonator
-set(PROJECT_SOURCE_DIR "${VTFLib_SOURCE_DIR}/thirdparty/compressonator")
-add_subdirectory(compressonator/cmp_compressonatorlib)
-target_include_directories(CMP_Compressonator INTERFACE "${PROJECT_SOURCE_DIR}/cmp_compressonatorlib")
-set(PROJECT_SOURCE_DIR "${VTFLib_SOURCE_DIR}")
+if(VTFLIB_DXT_BACKEND_COMPRESSONATOR)
+	# Compressonator
+	# HACK: messing with cmake variables to avoid running the main cmakelists of compressonator
+	set(PROJECT_SOURCE_DIR "${VTFLib_SOURCE_DIR}/thirdparty/compressonator")
+	add_subdirectory(compressonator/cmp_compressonatorlib)
+	target_include_directories(CMP_Compressonator INTERFACE "${PROJECT_SOURCE_DIR}/cmp_compressonatorlib")
+	set(PROJECT_SOURCE_DIR "${VTFLib_SOURCE_DIR}")
+endif()
+
+if(VTFLIB_DXT_BACKEND_LIBSQUISH)
+	# Squish
+	add_subdirectory(libsquish)
+endif()
 
 # DevIL
 add_library(DevIL INTERFACE)

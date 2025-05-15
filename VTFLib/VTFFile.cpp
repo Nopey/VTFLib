@@ -15,8 +15,15 @@
 #include "VTFDXTn.h"
 #include "VTFMathlib.h"
 
-#include "compressonator.h"
 #include "miniz.h"
+
+#ifdef VTFLIB_DXT_BACKEND_COMPRESSONATOR
+#include "compressonator.h"
+#endif
+
+#ifdef VTFLIB_DXT_BACKEND_LIBSQUISH
+#include "squish/squish.h"
+#endif
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
@@ -420,6 +427,7 @@ vlBool CVTFFile::Create(vlUInt uiWidth, vlUInt uiHeight, vlByte *lpImageDataRGBA
 	return this->Create(uiWidth, uiHeight, 1, 1, 1, &lpImageDataRGBA8888, VTFCreateOptions);
 }
 
+#ifdef VTFLIB_DXT_BACKEND_COMPRESSONATOR
 static CMP_FORMAT GetCMPFormat( VTFImageFormat imageFormat, bool bDXT5GA )
 {
 	if ( bDXT5GA )
@@ -483,6 +491,7 @@ static const char *GetCMPErrorString( CMP_ERROR error )
 		case CMP_ERR_GENERIC:                       return "An unknown error occurred.";
 	}
 }
+#endif
 
 //
 // Create()
@@ -3274,6 +3283,7 @@ vlBool CVTFFile::ConvertToRGBA8888(vlByte *lpSource, vlByte *lpDest, vlUInt uiWi
 //-----------------------------------------------------------------------------------------------------
 vlBool CVTFFile::DecompressBCn(vlByte *src, vlByte *dst, vlUInt uiWidth, vlUInt uiHeight, VTFImageFormat SourceFormat)
 {
+#ifdef VTFLIB_DXT_BACKEND_COMPRESSONATOR
 	CMP_Texture srcTexture = {0};
 	srcTexture.dwSize     = sizeof( srcTexture );
 	srcTexture.dwWidth    = uiWidth;
@@ -3306,6 +3316,11 @@ vlBool CVTFFile::DecompressBCn(vlByte *src, vlByte *dst, vlUInt uiWidth, vlUInt 
 	}
 
 	return vlTrue;
+#else
+	LastError.SetFormatted( "No decompression backend for image format '%s' enabled at compile time.",
+	                        GetImageFormatInfo( SourceFormat ).lpName );
+	return vlFalse;
+#endif
 }
 
 //
@@ -3324,6 +3339,7 @@ vlBool CVTFFile::ConvertFromRGBA8888(vlByte *lpSource, vlByte *lpDest, vlUInt ui
 //
 vlBool CVTFFile::CompressBCn(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt uiHeight, VTFImageFormat DestFormat)
 {
+#ifdef VTFLIB_DXT_BACKEND_COMPRESSONATOR
 	CMP_Texture srcTexture = {0};
 	srcTexture.dwSize     = sizeof( srcTexture );
 	srcTexture.dwWidth    = uiWidth;
@@ -3355,7 +3371,47 @@ vlBool CVTFFile::CompressBCn(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, v
 	}
 
 	return vlTrue;
+#else
+	LastError.SetFormatted( "No compression backend for image format '%s' enabled at compile time.", GetImageFormatInfo( DestFormat ).lpName );
+	return vlFalse;
+#endif
 }
+
+#if defined( VTFLIB_DXT_BACKEND_LIBSQUISH )
+vlBool VTFLib::CVTFFile::CompressLibSquish( vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUInt uiHeight,
+                                            VTFImageFormat DestFormat )
+{
+	int cFlags;
+	switch ( DestFormat )
+	{
+	case IMAGE_FORMAT_DXT1:
+		cFlags = squish::kDxt1;
+		break;
+	case IMAGE_FORMAT_DXT3:
+		cFlags = squish::kDxt3;
+		break;
+	case IMAGE_FORMAT_DXT5:
+		cFlags = squish::kDxt5;
+		break;
+	case IMAGE_FORMAT_ATI1N:
+		cFlags = squish::kBc4;
+		break;
+	case IMAGE_FORMAT_ATI2N:
+		cFlags = squish::kBc5;
+		break;
+	default:
+		LastError.SetFormatted( "libsquish can't compress to format '%s'", GetImageFormatInfo( DestFormat ).lpName );
+		return vlFalse;
+	}
+
+	// CPUs are fast enough, let's make higher quality VTFs:
+	cFlags |= squish::kColourIterativeClusterFit;
+
+	unsigned int uiPitch = 4 * uiWidth;
+	squish::CompressImage( lpSource, uiWidth, uiHeight, uiPitch, lpDest, cFlags );
+	return vlTrue;
+}
+#endif
 
 typedef vlVoid (*TransformProc)(vlUInt32& R, vlUInt32& G, vlUInt32& B, vlUInt32& A);
 
@@ -3938,11 +3994,18 @@ vlBool CVTFFile::Convert(vlByte *lpSource, vlByte *lpDest, vlUInt uiWidth, vlUIn
 			switch(DestFormat)
 			{
 			case IMAGE_FORMAT_DXT1:
-			case IMAGE_FORMAT_DXT1_ONEBITALPHA:
 			case IMAGE_FORMAT_DXT3:
 			case IMAGE_FORMAT_DXT5:
 			case IMAGE_FORMAT_ATI2N:
 			case IMAGE_FORMAT_ATI1N:
+#ifdef VTFLIB_DXT_BACKEND_LIBSQUISH
+				bResult = CVTFFile::CompressLibSquish( lpSourceRGBA, lpDest, uiWidth, uiHeight, DestFormat );
+#else
+				bResult = CVTFFile::CompressBCn( lpSourceRGBA, lpDest, uiWidth, uiHeight, DestFormat );
+#endif
+				break;
+
+			case IMAGE_FORMAT_DXT1_ONEBITALPHA:
 			case IMAGE_FORMAT_BC7:
 				// TODO: Magnus: BC6H and BC6H_SF creation; requires HDR input and testing
 			case IMAGE_FORMAT_BC6H:
