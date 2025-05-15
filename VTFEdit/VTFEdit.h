@@ -1593,6 +1593,7 @@ namespace VTFEdit
 			this->pnlMain->TabIndex = 2;
 			this->pnlMain->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &CVTFEdit::Control_DragDrop);
 			this->pnlMain->DragEnter += gcnew System::Windows::Forms::DragEventHandler(this, &CVTFEdit::Control_DragEnter);
+			this->pnlMain->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler( this, &CVTFEdit::picVTFFile_MouseWheel );
 			// 
 			// picVTFFileBR
 			// 
@@ -4384,6 +4385,19 @@ namespace VTFEdit
 			int iY = (int)((float)e->Y / this->fImageScale) + 1;
 
 			this->pnlInfo2->Text = System::String::Concat(iX.ToString(), ", ", iY.ToString());
+		}
+
+		private: System::Void picVTFFile_MouseWheel(System::Object ^  sender, System::Windows::Forms::MouseEventArgs ^  e)
+		{
+			if ( e->Delta == 0 )
+				return;
+
+			if ( ( this->pnlMain->ModifierKeys & Keys::Control ) == Keys::None )
+				return;
+
+			this->fImageScale *= powf( 2.0f, e->Delta / (float)WHEEL_DELTA );
+			//this->UpdateVTFFileScale();
+			this->UpdateVTFFile();
 		}
 
 		private: System::Void btnVTFFileZoomIn_Click(System::Object ^  sender, System::EventArgs ^  e)
